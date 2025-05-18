@@ -183,7 +183,7 @@ public static class ErrorMessages
 			public const string MistakeWordNotFound = "error.controller.mistake.not_found";
 		}
 
-		public static class Sse
+		public static class TestAnalysis
 		{
 			public const string CorrectAssignment = "error.controller.correct_assignment_failed";
 			public const string ExtractWords = "error.controller.extract_words_failed";

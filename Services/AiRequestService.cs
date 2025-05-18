@@ -18,9 +18,14 @@ public class AiRequestService(
 	ICurrentGenerateTaskService currentGenerateTaskService)
 	: IAiRequestService
 {
-	private readonly IConfigurationRoot _config = new ConfigurationBuilder()
+	private readonly IConfigurationRoot _secretConfig = new ConfigurationBuilder()
 		.SetBasePath(Directory.GetCurrentDirectory())
 		.AddJsonFile("secret.json", false, true)
+		.Build();
+
+	private readonly IConfigurationRoot _aiConfig = new ConfigurationBuilder()
+		.SetBasePath(Directory.GetCurrentDirectory())
+		.AddJsonFile("appsettings.json", false, true)
 		.Build();
 
 	# region Generate Ai Article
@@ -31,9 +36,13 @@ public class AiRequestService(
 		using var scope = serviceScopeFactory.CreateScope();
 		var repository = scope.ServiceProvider.GetRequiredService<IRepositoryService>();
 
-		var dApiKey = _config["DeepSeek:ApiKey"];
-		var cApiKey = _config["CA:ApiKey"];
-
+		var articleApiKey = _secretConfig["DeepSeek:ApiKey"] ?? throw new ArgumentException(_secretConfig["DeepSeek:ApiKey"]);
+		var articleEndPoint = _aiConfig["GenerateAiArticle:ArticleEndpoint"] ?? throw new ArgumentException(_aiConfig["GenerateAiArticle:ArticleEndpoint"]);
+		var articleModel = _aiConfig["GenerateAiArticle:ArticleModel"] ?? throw new ArgumentException(_aiConfig["GenerateAiArticle:ArticleModel"]);
+		var imageApiKey = _secretConfig["CA:ApiKey"] ?? throw new ArgumentException(_secretConfig["CA:ApiKey"]);
+		var imageEndPoint = _aiConfig["GenerateAiArticle:ImageEndpoint"] ?? throw new ArgumentException(_aiConfig["GenerateAiArticle:ImageEndpoint"]);
+		var imageModel = _aiConfig["GenerateAiArticle:ImageModel"] ?? throw new ArgumentException(_aiConfig["GenerateAiArticle:ImageModel"]);
+		
 		// 获得最新学习单词
 		var latestFinishedWordGroup = await repository.FinishedWordRepository.GetLatestFinishedWordIdAsync(userId);
 		if (latestFinishedWordGroup == null)
@@ -54,10 +63,10 @@ public class AiRequestService(
 		var prompt = string.Join("|", words);
 		var clientOptions = new OpenAIClientOptions
 		{
-			Endpoint = new Uri("https://api.deepseek.com")
+			Endpoint = new Uri(articleEndPoint)
 		};
-		var clientCredentials = new ApiKeyCredential($"{dApiKey}");
-		var client = new OpenAIClient(clientCredentials, clientOptions).GetChatClient("deepseek-chat");
+		var clientCredentials = new ApiKeyCredential($"{articleApiKey}");
+		var client = new OpenAIClient(clientCredentials, clientOptions).GetChatClient(articleModel);
 		const string systemPrompt = """
 		                            请根据我提供的使用 | 分隔的英文单词，不区分大小写，生成一篇英文文章，帮助学习这些单词。
 		                            title,description,content,tag,vocabulary; content 必须使用 Markdown 语法文本, vocabulary 必须使用形如例子的 Markdown 语法文本, 其他部分以纯文本返回，tag为单个不超过50个字母的单词。
@@ -98,19 +107,19 @@ public class AiRequestService(
 		// 生成封面
 		var aiArticleToRequest = aiArticle.Content.Length > 900 ? aiArticle.Content[..900] : aiArticle.Content;
 
-		var coverClient = new RestClient("https://api.chatanywhere.tech/v1/images/generations");
+		var coverClient = new RestClient(imageEndPoint);
 		var coverRequest = new RestRequest
 		{
 			Method = Method.Post
 		};
-		coverRequest.AddHeader("Authorization", $"Bearer {cApiKey}");
+		coverRequest.AddHeader("Authorization", $"Bearer {imageApiKey}");
 		coverRequest.AddHeader("Content-Type", "application/json");
 
 		var coverBody = new
 		{
 			prompt = $"Generate an image based on the following English article: {aiArticleToRequest}",
 			n = 1,
-			model = "dall-e-3",
+			model = imageModel,
 			size = "1024x1024"
 		};
 
@@ -187,16 +196,18 @@ public class AiRequestService(
 		using var scope = serviceScopeFactory.CreateScope();
 		var repository = scope.ServiceProvider.GetRequiredService<IRepositoryService>();
 
-		var apiKey = _config["CA:ApiKey"];
+		var apiKey = _secretConfig["CA:ApiKey"] ?? throw new ArgumentException(_secretConfig["CA:ApiKey"]);
+		var endPoint = _aiConfig["GenerateAiFillInBlankAsync:EndPoint"] ?? throw new ArgumentException(_aiConfig["GenerateAiFillInBlankAsync:EndPoint"]);
+		var model = _aiConfig["GenerateAiFillInBlankAsync:Model"] ?? throw new ArgumentException(_aiConfig["GenerateAiFillInBlankAsync:Model"]);
 
 		var wordText = string.Join("|", words.Take(15));
 
 		var clientOptions = new OpenAIClientOptions
 		{
-			Endpoint = new Uri("https://api.chatanywhere.tech")
+			Endpoint = new Uri(endPoint)
 		};
 		var clientCredentials = new ApiKeyCredential($"{apiKey}");
-		var client = new OpenAIClient(clientCredentials, clientOptions).GetChatClient("o3-mini");
+		var client = new OpenAIClient(clientCredentials, clientOptions).GetChatClient(model);
 		const string systemPrompt = """
 		                            我将提供给你几个英语单词，使用｜分隔，请你将这些单词作为考察内容出一篇选词填空题，帮助用户巩固单词记忆。不要出现连续的填空，使用JSON格式回复。
 		                            EXAMPLE INPUT: 
@@ -245,12 +256,14 @@ public class AiRequestService(
 	# region Generate Ai Cloze Test
 
 	// 生成完形填空
-	public async Task GenerateAiClozeTest(List<string> words, Guid userId, Guid sessionId)
+	public async Task GenerateAiClozeTestAsync(List<string> words, Guid userId, Guid sessionId)
 	{
 		using var scope = serviceScopeFactory.CreateScope();
 		var repository = scope.ServiceProvider.GetRequiredService<IRepositoryService>();
 
-		var apiKey = _config["CA:ApiKey"];
+		var apiKey = _secretConfig["CA:ApiKey"] ?? throw new ArgumentException(_secretConfig["CA:ApiKey"]);
+		var endPoint = _aiConfig["GenerateAiClozeTest:EndPoint"] ?? throw new ArgumentException(_aiConfig["GenerateAiClozeTest:EndPoint"]);
+		var model = _aiConfig["GenerateAiClozeTest:Model"] ?? throw new ArgumentException(_aiConfig["GenerateAiClozeTest:Model"]);
 
 		var random = new Random();
 		words = words.OrderBy(_ => random.Next()).ToList();
@@ -258,10 +271,10 @@ public class AiRequestService(
 
 		var clientOptions = new OpenAIClientOptions
 		{
-			Endpoint = new Uri("https://api.chatanywhere.tech")
+			Endpoint = new Uri(endPoint)
 		};
 		var clientCredentials = new ApiKeyCredential($"{apiKey}");
-		var client = new OpenAIClient(clientCredentials, clientOptions).GetChatClient("o3-mini");
+		var client = new OpenAIClient(clientCredentials, clientOptions).GetChatClient(model);
 		const string systemPrompt = """
 		                            我将提供给你几个英语单词，使用｜分隔，请你将这些单词作为考察内容出一篇完型填空题，帮助用户巩固单词记忆。不要出现连续的填空，analysis使用中文。使用JSON格式回复。
 		                            EXAMPLE INPUT: 
@@ -333,13 +346,16 @@ public class AiRequestService(
 		string fileExtension,
 		[EnumeratorCancellation] CancellationToken cancellationToken = default)
 	{
-		var apiKey = _config["CA:ApiKey"];
+		var apiKey = _secretConfig["CA:ApiKey"] ?? throw new ArgumentException(_secretConfig["CA:ApiKey"]);
+		var endPoint = _aiConfig["CorrectAssignment:EndPoint"] ?? throw new ArgumentException(_aiConfig["CorrectAssignment:EndPoint"]);
+		var model = _aiConfig["CorrectAssignment:Model"] ?? throw new ArgumentException(_aiConfig["CorrectAssignment:Model"]);
+		
 		var clientOptions = new OpenAIClientOptions
 		{
-			Endpoint = new Uri("https://api.chatanywhere.tech")
+			Endpoint = new Uri(endPoint)
 		};
 		var clientCredentials = new ApiKeyCredential($"{apiKey}");
-		var client = new OpenAIClient(clientCredentials, clientOptions).GetChatClient("o4-mini");
+		var client = new OpenAIClient(clientCredentials, clientOptions).GetChatClient(model);
 
 		// string.Concat() 拼接字符串
 		// string.AsSpan() 提取字符串
@@ -383,13 +399,16 @@ public class AiRequestService(
 
 	public async Task<MatchExtractWords?> ExtractWordsAsync(StringBuilder correctResult, CancellationToken cancellationToken)
 	{
-		var apiKey = _config["CA:ApiKey"];
+		var apiKey = _secretConfig["CA:ApiKey"] ?? throw new ArgumentException(_secretConfig["CA:ApiKey"]);
+		var endPoint = _aiConfig["ExtractWords:EndPoint"] ?? throw new ArgumentException(_aiConfig["ExtractWords:EndPoint"]);
+		var model = _aiConfig["ExtractWordsAsync:Model"] ?? throw new ArgumentException(_aiConfig["ExtractWordsAsync:Model"]);
+		
 		var clientOptions = new OpenAIClientOptions
 		{
-			Endpoint = new Uri("https://api.chatanywhere.tech")
+			Endpoint = new Uri(endPoint)
 		};
 		var clientCredentials = new ApiKeyCredential($"{apiKey}");
-		var client = new OpenAIClient(clientCredentials, clientOptions).GetChatClient("gpt-4.1-nano");
+		var client = new OpenAIClient(clientCredentials, clientOptions).GetChatClient(model);
 		const string systemPrompt = """
 		                            帮我从作业批改信息中提取单词。
 		                            to,for,a,an,be,the等量词、介词不要提取。
