@@ -141,7 +141,7 @@ public class WordSessionController(
 
 		var words = studyWords.Select(x => x.WordText).ToList();
 		// _ = Task.Run(() => aiRequest.GenerateAiFillInBlankAsync(words, userId.Value));
-		_ = Task.Run(() => aiRequest.GenerateAiClozeTest(words, userId.Value, session.Id));
+		_ = Task.Run(() => aiRequest.GenerateAiClozeTestAsync(words, userId.Value, session.Id));
 		return Ok(StartStudyResp.Success(session.Id, reviewingWordCount, studyingWordCount, wordQueue));
 	}
 

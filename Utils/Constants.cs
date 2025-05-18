@@ -69,7 +69,7 @@ public static class Constants
 		public const int MaxWordBookNameLength = 50;
 	}
 
-	public static class Sse
+	public static class TestAnalysis
 	{
 		public const int MaxSseImageSize = 3 * 1024 * 1024; // 1MB
 		public const int SseImageMaxWidth = 3 * 1024;

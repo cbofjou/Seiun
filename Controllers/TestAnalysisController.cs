@@ -12,10 +12,10 @@ using SixLabors.ImageSharp;
 namespace Seiun.Controllers;
 
 [ApiController]
-[Route("/api/sse")]
-public class SseController(
+[Route("/api/test-analysis")]
+public class TestAnalysisController(
 	IAiRequestService aiRequest,
-	ILogger<SseController> logger,
+	ILogger<TestAnalysisController> logger,
 	IRepositoryService repository)
 	: ControllerBase
 {
@@ -58,7 +58,7 @@ public class SseController(
 			return;
 		}
 
-		if (imageFile.Length > Constants.Sse.MaxSseImageSize)
+		if (imageFile.Length > Constants.TestAnalysis.MaxSseImageSize)
 		{
 		    var respJson = System.Text.Json.JsonSerializer.Serialize(
 		    BadRequest(ResponseFactory.NewFailedBaseResponse(
@@ -101,8 +101,8 @@ public class SseController(
 			return;
 		}
 
-		if (image.Width > Constants.Sse.SseImageMaxWidth ||
-		    image.Height > Constants.Sse.SseImageMaxHeight)
+		if (image.Width > Constants.TestAnalysis.SseImageMaxWidth ||
+		    image.Height > Constants.TestAnalysis.SseImageMaxHeight)
 		{
 			var respJson = System.Text.Json.JsonSerializer.Serialize(
 			BadRequest(ResponseFactory.NewFailedBaseResponse(
@@ -157,7 +157,7 @@ public class SseController(
 			StatusCode(StatusCodes.Status500InternalServerError,
 			ResponseFactory.NewFailedBaseResponse(
 			StatusCodes.Status500InternalServerError,
-			ErrorMessages.Controller.Sse.CorrectAssignment)));
+			ErrorMessages.Controller.TestAnalysis.CorrectAssignment)));
 			await SseResponse.SseResp(Response, respJson, cancellationToken);
 			HttpContext.Abort();
 			return;
@@ -177,7 +177,7 @@ public class SseController(
 				var notFoundRespJson = System.Text.Json.JsonSerializer.Serialize(
 				NotFound(ResponseFactory.NewFailedBaseResponse(
 				StatusCodes.Status404NotFound,
-				ErrorMessages.Controller.Sse.NotFoundExtractWords
+				ErrorMessages.Controller.TestAnalysis.NotFoundExtractWords
 				)));
 				await SseResponse.SseResp(Response, notFoundRespJson, cancellationToken);
 				HttpContext.Abort();
@@ -199,7 +199,7 @@ public class SseController(
 			StatusCode(StatusCodes.Status500InternalServerError,
 			ResponseFactory.NewFailedBaseResponse(
 			StatusCodes.Status500InternalServerError,
-			ErrorMessages.Controller.Sse.ExtractWords)));
+			ErrorMessages.Controller.TestAnalysis.ExtractWords)));
 			await SseResponse.SseResp(Response, respJson, cancellationToken);
 			HttpContext.Abort();
 		}

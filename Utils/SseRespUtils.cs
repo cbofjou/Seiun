@@ -1,22 +1,8 @@
-using System.Text.Json.Serialization;
 using System.Text;
-using Seiun.Entities;
 
-namespace Seiun.Models.Responses;
+namespace Seiun.Utils;
 
-#region Match Extract Words
-
-public class MatchExtractWords
-{
-	[JsonPropertyName("words")] public required List<string> Words { get; set; }
-}
-
-public class ExtractWordDetails
-{
-	public required List<WordEntity> WordDetails { get; set; }
-}
-
-public class SseResponse
+public static class SseResponse
 {
 	public static async Task SseResp(HttpResponse httpResp, string respString, CancellationToken cancellationToken = default)
 	{
@@ -31,4 +17,3 @@ public class SseResponse
 	}
 }
 
-#endregion
